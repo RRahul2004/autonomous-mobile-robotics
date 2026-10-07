@@ -18,3 +18,6 @@ __pycache__/
 .env
 *.pem
 *.key
+
+# Template folder
+/template/

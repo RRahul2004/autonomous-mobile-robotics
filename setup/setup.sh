@@ -159,19 +159,21 @@ sleep 1
 # ---------------------------------------------------------
 
 echo "========================================"
-echo ".... Setting up RoboHub ...."
+echo ".... Setting up TurtleBot4 repository ...."
 echo "========================================"
 
-mkdir -p "$HOME/robohub"
+# Override MTE544_DIR before running the script if your repository is elsewhere.
+MTE544_DIR="${MTE544_DIR:-$HOME/Documents/University_of_Waterloo/MTE_544}"
+TURTLEBOT4_DIR="$MTE544_DIR/turtlebot4"
 
-if [ -d "$HOME/robohub/turtlebot4/.git" ]; then
-    echo ".... TurtleBot4 repository already exists ...."
+mkdir -p "$MTE544_DIR"
+
+if [ -d "$TURTLEBOT4_DIR/.git" ]; then
+    echo ".... TurtleBot4 repository already exists at $TURTLEBOT4_DIR ...."
 else
-    cd "$HOME/robohub"
+    echo ".... Cloning TurtleBot4 repository into $TURTLEBOT4_DIR ...."
 
-    echo ".... Cloning TurtleBot4 repository ...."
-
-    git clone ist-git@git.uwaterloo.ca:robohub/turtlebot4.git
+    git clone gitlab-school:robohub/turtlebot4.git "$TURTLEBOT4_DIR"
 fi
 
 # ---------------------------------------------------------
@@ -184,10 +186,10 @@ echo "========================================"
 
 sudo apt-get install -y ros-humble-rmw-fastrtps-cpp
 
-if [ -f "$HOME/robohub/turtlebot4/configs/.fastdds.xml" ]; then
+if [ -f "$TURTLEBOT4_DIR/configs/.fastdds.xml" ]; then
 
     cp \
-        "$HOME/robohub/turtlebot4/configs/.fastdds.xml" \
+        "$TURTLEBOT4_DIR/configs/.fastdds.xml" \
         "$HOME/.fastdds.xml"
 
     echo ".... Fast DDS configuration copied ...."
