@@ -162,18 +162,34 @@ echo "========================================"
 echo ".... Setting up TurtleBot4 repository ...."
 echo "========================================"
 
-# Override MTE544_DIR before running the script if your repository is elsewhere.
-MTE544_DIR="${MTE544_DIR:-$HOME/Documents/University_of_Waterloo/MTE_544}"
+# When run from this repository, find MTE_544 relative to this script.
+# MTE544_DIR can still be set explicitly when the repository is elsewhere.
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+DEFAULT_MTE544_DIR="$HOME/Documents/University_of_Waterloo/MTE_544"
+
+if [ -f "$SCRIPT_DIR/../.gitmodules" ]; then
+    DEFAULT_MTE544_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+fi
+
+MTE544_DIR="${MTE544_DIR:-$DEFAULT_MTE544_DIR}"
 TURTLEBOT4_DIR="$MTE544_DIR/turtlebot4"
+TURTLEBOT4_URL="ist-git@git.uwaterloo.ca:robohub/turtlebot4.git"
 
 mkdir -p "$MTE544_DIR"
 
-if [ -d "$TURTLEBOT4_DIR/.git" ]; then
-    echo ".... TurtleBot4 repository already exists at $TURTLEBOT4_DIR ...."
-else
-    echo ".... Cloning TurtleBot4 repository into $TURTLEBOT4_DIR ...."
+if git -C "$TURTLEBOT4_DIR" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    echo ".... TurtleBot4 repository is already available at $TURTLEBOT4_DIR ...."
+elif [ -f "$MTE544_DIR/.gitmodules" ] && \
+     git -C "$MTE544_DIR" config --file "$MTE544_DIR/.gitmodules" --get-regexp \
+        '^submodule\..*\.path$' 2>/dev/null | grep -q ' turtlebot4$'; then
+    echo ".... Initializing the TurtleBot4 submodule ...."
 
-    git clone gitlab-school:robohub/turtlebot4.git "$TURTLEBOT4_DIR"
+    git -C "$MTE544_DIR" submodule sync -- turtlebot4
+    git -C "$MTE544_DIR" submodule update --init --recursive -- turtlebot4
+else
+    echo ".... No TurtleBot4 submodule found; cloning into $TURTLEBOT4_DIR ...."
+
+    git clone "$TURTLEBOT4_URL" "$TURTLEBOT4_DIR"
 fi
 
 # ---------------------------------------------------------
