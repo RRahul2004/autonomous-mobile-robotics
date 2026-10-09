@@ -35,8 +35,9 @@ class motion_executioner(Node):
         
         self.radius_=0.0
         self.spiral_rate =0.0
-        self.spiral_rate_max = 1.0
+        self.spiral_rate_max = 0.7
         self.reached_spiral_max = False
+        self.spiral_angular = 1.0
         
         self.successful_init=False
         self.imu_initialized=False
@@ -171,7 +172,7 @@ class motion_executioner(Node):
         #for circular motion mag(lin vel) = mag(ang vel)
         msg.linear.x = 0.5
         msg.linear.y = 0.0
-        msg.angular.z = 1.0
+        msg.angular.z = 2.0
         return msg
 
     def make_spiral_twist(self):
@@ -181,17 +182,23 @@ class motion_executioner(Node):
         # keep angualr velocity constant and then slowly increment linear velocity
         msg.linear.x = self.spiral_rate
         msg.linear.y = 0.0
-        msg.angular.z = 1.0
+        msg.angular.z = self.spiral_angular
 
         if self.reached_spiral_max == False:
-            self.spiral_rate += 0.01
+            self.spiral_rate += 0.001
             if self.spiral_rate >= self.spiral_rate_max:
                 self.reached_spiral_max = True
+                msg.linear.x = 0.0
+                msg.linear.y = 0.0
+                msg.angular.z = 0.0
+                self.spiral_rate = 0
+                self.spiral_angular = 0
+        """
         if self.reached_spiral_max == True:
             self.spiral_rate -= 0.01
             if self.spiral_rate <= 0:
                 self.reached_spiral_max = False
-        
+        """
         
         
         
