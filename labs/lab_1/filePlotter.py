@@ -1,3 +1,4 @@
+
 import argparse
 import csv
 import os
@@ -19,7 +20,6 @@ def get_plot_title(sensor, filename):
         "line": "Line",
         "straight": "Straight",
         "spiral": "Spiral",
-
     }
 
     motion = "Unknown Motion"
@@ -33,9 +33,8 @@ def get_plot_title(sensor, filename):
 
 
 # --------------------------------------------------
-# Read ordinary CSV files: IMU and Odometry
+# Read IMU and odometry CSV files
 # --------------------------------------------------
-
 
 def read_standard_csv(filename):
     with open(filename, "r", newline="", encoding="utf-8-sig") as file:
@@ -44,7 +43,6 @@ def read_standard_csv(filename):
         if not reader.fieldnames:
             raise ValueError(f"No CSV headers found in {filename}")
 
-        # Remove whitespace and normalize header names.
         reader.fieldnames = [
             header.strip().lower() if header else ""
             for header in reader.fieldnames
@@ -64,7 +62,7 @@ def read_standard_csv(filename):
 
 
 # --------------------------------------------------
-# Parse LiDAR ranges, including inf and nan
+# Parse LiDAR ranges
 # --------------------------------------------------
 
 def parse_ranges(array_text):
@@ -97,16 +95,14 @@ def parse_ranges(array_text):
 
 # --------------------------------------------------
 # Read LiDAR CSV files
-#
-# The ranges field contains commas inside array('f',
-# [...]), so normal csv.DictReader cannot parse it.
+# Supports array('f', [...]),angle_increment,stamp
 # --------------------------------------------------
 
 def read_lidar_csv(filename):
     rows = []
 
     row_pattern = re.compile(
-        r"^\s*(array\(\s*['\"]f['\"]\s*,\s*\[.*?\]\s*\))"
+        r"""^\s*(array\(\s*['"]f['"]\s*,\s*\[.*?\]\s*\))"""
         r"\s*,\s*"
         r"([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)"
         r"\s*,\s*"
@@ -118,7 +114,7 @@ def read_lidar_csv(filename):
         first_line = file.readline().strip()
 
         if not first_line:
-            raise ValueError(f"Empty CSV file: {filename}")
+            raise ValueError(f"Empty LiDAR file: {filename}")
 
         headers = [
             item.strip().lower()
@@ -176,199 +172,203 @@ def elapsed_seconds(rows, stamp_key="stamp"):
 
 
 # --------------------------------------------------
-# Plot IMU
+# Plot all sensors in one figure: 2 rows x 3 columns
 # --------------------------------------------------
 
-def plot_imu(filename, headers, rows):
-    required = ["acc_x", "acc_y", "angular_z", "stamp"]
+def plot_all(imu_file, odom_file, lidar_file):
 
-    if not all(key in headers for key in required):
+    # Read CSV files
+    imu_headers, imu_rows = read_standard_csv(imu_file)
+    odom_headers, odom_rows = read_standard_csv(odom_file)
+    lidar_rows = read_lidar_csv(lidar_file)
+
+    if not imu_rows:
+        raise ValueError("IMU file contains no data.")
+
+    if not odom_rows:
+        raise ValueError("Odometry file contains no data.")
+
+    # Validate required columns
+    imu_required = ["acc_x", "acc_y", "angular_z", "stamp"]
+    odom_required = ["x", "y", "th", "stamp"]
+
+    if not all(key in imu_headers for key in imu_required):
         raise ValueError(
-            f"IMU file must contain {required}. Found: {headers}"
+            f"IMU file must contain {imu_required}. "
+            f"Found: {imu_headers}"
         )
 
-    time = elapsed_seconds(rows)
-
-    acc_x = np.array([float(row["acc_x"]) for row in rows])
-    acc_y = np.array([float(row["acc_y"]) for row in rows])
-    angular_z = np.array([float(row["angular_z"]) for row in rows])
-
-    fig, axes = plt.subplots(2, 1, figsize=(10, 7), sharex=True)
-
-    axes[0].plot(time, acc_x, label="Acceleration X")
-    axes[0].plot(time, acc_y, label="Acceleration Y")
-    axes[0].set_ylabel("Acceleration (m/s²)")
-    axes[0].set_title("Linear Acceleration")
-    axes[0].legend()
-    axes[0].grid(True)
-
-    axes[1].plot(time, angular_z, label="Angular Velocity Z")
-    axes[1].set_xlabel("Elapsed Time (s)")
-    axes[1].set_ylabel("Angular Velocity (rad/s)")
-    axes[1].set_title("Angular Velocity")
-    axes[1].legend()
-    axes[1].grid(True)
-
-    fig.suptitle(get_plot_title("IMU", filename))
-    fig.tight_layout()
-    plt.show()
-
-
-# --------------------------------------------------
-# Plot Odometry
-# --------------------------------------------------
-
-def plot_odom(filename, headers, rows):
-    required = ["x", "y", "th", "stamp"]
-
-    if not all(key in headers for key in required):
+    if not all(key in odom_headers for key in odom_required):
         raise ValueError(
-            f"Odometry file must contain {required}. Found: {headers}"
+            f"Odometry file must contain {odom_required}. "
+            f"Found: {odom_headers}"
         )
 
-    time = elapsed_seconds(rows)
+    # ----------------------------------------------
+    # Extract IMU data
+    # ----------------------------------------------
 
-    x = np.array([float(row["x"]) for row in rows])
-    y = np.array([float(row["y"]) for row in rows])
-    theta = np.array([float(row["th"]) for row in rows])
+    imu_time = elapsed_seconds(imu_rows)
 
-    fig, axes = plt.subplots(2, 1, figsize=(10, 7))
+    acc_x = np.array([float(row["acc_x"]) for row in imu_rows])
+    acc_y = np.array([float(row["acc_y"]) for row in imu_rows])
+    angular_z = np.array(
+        [float(row["angular_z"]) for row in imu_rows]
+    )
 
-    axes[0].plot(time, x, label="X Position")
-    axes[0].plot(time, y, label="Y Position")
-    axes[0].set_xlabel("Elapsed Time (s)")
-    axes[0].set_ylabel("Position (m)")
-    axes[0].set_title("Position")
-    axes[0].legend()
-    axes[0].grid(True)
+    # ----------------------------------------------
+    # Extract odometry data
+    # ----------------------------------------------
 
-    axes[1].plot(time, theta, label="Heading")
-    axes[1].set_xlabel("Elapsed Time (s)")
-    axes[1].set_ylabel("Heading (rad)")
-    axes[1].set_title("Heading")
-    axes[1].legend()
-    axes[1].grid(True)
+    odom_time = elapsed_seconds(odom_rows)
 
-    fig.suptitle(get_plot_title("Odometry", filename))
-    fig.tight_layout()
-    plt.show()
+    x = np.array([float(row["x"]) for row in odom_rows])
+    y = np.array([float(row["y"]) for row in odom_rows])
+    theta = np.array([float(row["th"]) for row in odom_rows])
 
+    # ----------------------------------------------
+    # Extract the first LiDAR scan
+    # ----------------------------------------------
 
-# --------------------------------------------------
-# Plot LiDAR
-# --------------------------------------------------
+    scan = lidar_rows[0]
 
-def plot_lidar(filename):
-    rows = read_lidar_csv(filename)
-
-    # Plot the first scan in the file.
-    scan = rows[0]
-
-    ranges = scan["ranges"]
+    ranges = scan["ranges"].copy()
     angle_increment = scan["angle_increment"]
 
-    # Replace invalid or infinite distances with zero.
-    ranges = np.nan_to_num(
-        ranges,
-        nan=0.0,
-        posinf=0.0,
-        neginf=0.0
-    )
+    # Ignore invalid, infinite, and non-positive ranges
+    ranges[~np.isfinite(ranges)] = np.nan
+    ranges[ranges <= 0] = np.nan
 
     angles = np.arange(len(ranges)) * angle_increment
 
-    # Convert polar coordinates to Cartesian coordinates.
-    x = ranges * np.cos(angles)
-    y = ranges * np.sin(angles)
+    lidar_x = ranges * np.cos(angles)
+    lidar_y = ranges * np.sin(angles)
 
-    # Do not plot zero-distance measurements.
-    valid = ranges > 0
+    valid = np.isfinite(lidar_x) & np.isfinite(lidar_y)
 
-    fig, ax = plt.subplots(figsize=(8, 8))
+    # ----------------------------------------------
+    # Create ONE figure: 2 rows x 3 columns
+    # ----------------------------------------------
+
+    fig, axes = plt.subplots(
+        3, 2,
+        figsize=(18, 9)
+    )
+
+    fig.suptitle(
+        get_plot_title("Sensor Data", imu_file),
+        fontsize=16
+    )
+
+    # ----------------------------------------------
+    # 1. Robot trajectory (top-left)
+    # ----------------------------------------------
+
+    ax = axes[0, 0]
+
+    ax.plot(x, y, label="Robot Trajectory")
+    ax.scatter(x[0], y[0], marker="o", label="Start")
+    ax.scatter(x[-1], y[-1], marker="x", label="End")
+
+    ax.set_title("Robot Trajectory")
+    ax.set_xlabel("X Position (m)")
+    ax.set_ylabel("Y Position (m)")
+    ax.set_aspect("equal", adjustable="datalim")
+    ax.legend()
+    ax.grid(True)
+
+    # ----------------------------------------------
+    # 2. LiDAR scan (top-middle)
+    # ----------------------------------------------
+
+    ax = axes[0, 1]
 
     ax.scatter(
-    x[valid],
-    y[valid],
-    s=3,
-    label="LiDAR Measurements"
-)
+        lidar_x[valid],
+        lidar_y[valid],
+        s=3,
+        label="LiDAR Measurements"
+    )
 
-    # Mark the robot's middle position (origin).
     ax.scatter(
-        0,
-        0,
-        color="red",
+        0, 0,
         marker="x",
         s=100,
         label="Robot Position"
     )
 
-    ax.legend(loc="best")
-
-    ax.set_xlabel("X (m)")
-    ax.set_ylabel("Y (m)")
-    ax.set_title(get_plot_title("LiDAR", filename))
+    ax.set_title("LiDAR 2D Scan (First Scan)")
+    ax.set_xlabel("X Distance (m)")
+    ax.set_ylabel("Y Distance (m)")
     ax.set_aspect("equal", adjustable="datalim")
+    ax.legend(loc="best")
     ax.grid(True)
 
+    # ----------------------------------------------
+    # 3. Linear acceleration (top-right)
+    # ----------------------------------------------
+
+    ax = axes[1, 0]
+
+    ax.plot(imu_time, acc_x, label="Acceleration X")
+    ax.plot(imu_time, acc_y, label="Acceleration Y")
+
+    ax.set_title("IMU: Linear Acceleration")
+    ax.set_xlabel("Elapsed Time (s)")
+    ax.set_ylabel("Acceleration (m/s²)")
+    ax.legend()
+    ax.grid(True)
+
+    # ----------------------------------------------
+    # 4. Angular velocity (bottom-left)
+    # ----------------------------------------------
+
+    ax = axes[1, 1]
+
+    ax.plot(
+        imu_time,
+        angular_z,
+        label="Angular Velocity Z"
+    )
+
+    ax.set_title("IMU: Angular Velocity")
+    ax.set_xlabel("Elapsed Time (s)")
+    ax.set_ylabel("Angular Velocity (rad/s)")
+    ax.legend()
+    ax.grid(True)
+
+    # ----------------------------------------------
+    # 5. Position versus time (bottom-middle)
+    # ----------------------------------------------
+
+    ax = axes[2, 0]
+
+    ax.plot(odom_time, x, label="X Position")
+    ax.plot(odom_time, y, label="Y Position")
+
+    ax.set_title("Odometry: Position vs Time")
+    ax.set_xlabel("Elapsed Time (s)")
+    ax.set_ylabel("Position (m)")
+    ax.legend()
+    ax.grid(True)
+
+    # ----------------------------------------------
+    # 6. Heading versus time (bottom-right)
+    # ----------------------------------------------
+
+    ax = axes[2, 1]
+
+    ax.plot(odom_time, theta, label="Heading")
+
+    ax.set_title("Odometry: Heading vs Time")
+    ax.set_xlabel("Elapsed Time (s)")
+    ax.set_ylabel("Heading (rad)")
+    ax.legend()
+    ax.grid(True)
+
+    # Improve spacing and display one window
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
-
-
-# --------------------------------------------------
-# Detect sensor type and plot the file
-# --------------------------------------------------
-
-def plot_file(filename):
-    print(f"Processing: {filename}")
-
-    if not os.path.isfile(filename):
-        print(f"Error: File not found: {filename}")
-        return
-
-    try:
-        with open(
-            filename, "r", encoding="utf-8-sig"
-        ) as file:
-            first_line = file.readline().strip().lower()
-
-        if not first_line:
-            print(f"Error: Empty file: {filename}")
-            return
-
-        if (
-            "ranges" in first_line
-            and "angle_increment" in first_line
-            and "stamp" in first_line
-        ):
-            plot_lidar(filename)
-            return
-
-        headers, rows = read_standard_csv(filename)
-
-        if not rows:
-            print(f"Error: No data rows in {filename}")
-            return
-
-        headers = [header.strip().lower() for header in headers]
-
-        if all(
-            key in headers
-            for key in ("acc_x", "acc_y", "angular_z", "stamp")
-        ):
-            plot_imu(filename, headers, rows)
-
-        elif all(
-            key in headers
-            for key in ("x", "y", "th", "stamp")
-        ):
-            plot_odom(filename, headers, rows)
-
-        else:
-            print(f"Could not identify sensor type in {filename}")
-            print(f"Found headers: {headers}")
-
-    except (ValueError, KeyError, OSError) as error:
-        print(f"Error processing {filename}: {error}")
 
 
 # --------------------------------------------------
@@ -377,20 +377,32 @@ def plot_file(filename):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Plot robot IMU, Odometry, and LiDAR CSV data."
+        description=(
+            "Plot IMU, odometry, and LiDAR CSV files "
+            "in six subplots."
+        )
     )
 
     parser.add_argument(
         "--files",
-        nargs="+",
+        nargs=3,
         required=True,
-        help="One or more CSV files to plot."
+        metavar=("IMU_CSV", "ODOM_CSV", "LIDAR_CSV"),
+        help="Provide IMU, odometry, and LiDAR CSV files in that order."
     )
 
     args = parser.parse_args()
 
+    imu_file, odom_file, lidar_file = args.files
+
     for filename in args.files:
-        plot_file(filename)
+        if not os.path.isfile(filename):
+            parser.error(f"File not found: {filename}")
+
+    try:
+        plot_all(imu_file, odom_file, lidar_file)
+    except (ValueError, KeyError, OSError) as error:
+        parser.error(str(error))
 
 
 if __name__ == "__main__":
