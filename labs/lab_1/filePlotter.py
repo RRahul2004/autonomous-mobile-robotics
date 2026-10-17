@@ -7,11 +7,6 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 
-
-# --------------------------------------------------
-# Plot title generation
-# --------------------------------------------------
-
 def get_plot_title(sensor, filename):
     name = os.path.basename(filename).lower()
 
@@ -31,10 +26,6 @@ def get_plot_title(sensor, filename):
 
     return f"Robot {sensor}: {motion}"
 
-
-# --------------------------------------------------
-# Read IMU and odometry CSV files
-# --------------------------------------------------
 
 def read_standard_csv(filename):
     with open(filename, "r", newline="", encoding="utf-8-sig") as file:
@@ -60,10 +51,6 @@ def read_standard_csv(filename):
 
         return reader.fieldnames, rows
 
-
-# --------------------------------------------------
-# Parse LiDAR ranges
-# --------------------------------------------------
 
 def parse_ranges(array_text):
     start = array_text.find("[")
@@ -91,12 +78,6 @@ def parse_ranges(array_text):
             values.append(float(value))
 
     return np.array(values, dtype=float)
-
-
-# --------------------------------------------------
-# Read LiDAR CSV files
-# Supports array('f', [...]),angle_increment,stamp
-# --------------------------------------------------
 
 def read_lidar_csv(filename):
     rows = []
@@ -158,10 +139,6 @@ def read_lidar_csv(filename):
     return rows
 
 
-# --------------------------------------------------
-# Convert timestamps to elapsed seconds
-# --------------------------------------------------
-
 def elapsed_seconds(rows, stamp_key="stamp"):
     stamps = np.array(
         [float(row[stamp_key]) for row in rows],
@@ -170,10 +147,6 @@ def elapsed_seconds(rows, stamp_key="stamp"):
 
     return (stamps - stamps[0]) * 1e-9
 
-
-# --------------------------------------------------
-# Plot all sensors in one figure: 2 rows x 3 columns
-# --------------------------------------------------
 
 def plot_all(imu_file, odom_file, lidar_file):
 
@@ -204,10 +177,6 @@ def plot_all(imu_file, odom_file, lidar_file):
             f"Found: {odom_headers}"
         )
 
-    # ----------------------------------------------
-    # Extract IMU data
-    # ----------------------------------------------
-
     imu_time = elapsed_seconds(imu_rows)
 
     acc_x = np.array([float(row["acc_x"]) for row in imu_rows])
@@ -216,19 +185,12 @@ def plot_all(imu_file, odom_file, lidar_file):
         [float(row["angular_z"]) for row in imu_rows]
     )
 
-    # ----------------------------------------------
-    # Extract odometry data
-    # ----------------------------------------------
 
     odom_time = elapsed_seconds(odom_rows)
 
     x = np.array([float(row["x"]) for row in odom_rows])
     y = np.array([float(row["y"]) for row in odom_rows])
     theta = np.array([float(row["th"]) for row in odom_rows])
-
-    # ----------------------------------------------
-    # Extract the first LiDAR scan
-    # ----------------------------------------------
 
     scan = lidar_rows[0]
 
@@ -246,10 +208,6 @@ def plot_all(imu_file, odom_file, lidar_file):
 
     valid = np.isfinite(lidar_x) & np.isfinite(lidar_y)
 
-    # ----------------------------------------------
-    # Create ONE figure: 2 rows x 3 columns
-    # ----------------------------------------------
-
     fig, axes = plt.subplots(
         3, 2,
         figsize=(18, 9)
@@ -259,10 +217,6 @@ def plot_all(imu_file, odom_file, lidar_file):
         get_plot_title("Sensor Data", imu_file),
         fontsize=16
     )
-
-    # ----------------------------------------------
-    # 1. Robot trajectory (top-left)
-    # ----------------------------------------------
 
     ax = axes[0, 0]
 
@@ -277,9 +231,6 @@ def plot_all(imu_file, odom_file, lidar_file):
     ax.legend()
     ax.grid(True)
 
-    # ----------------------------------------------
-    # 2. LiDAR scan (top-middle)
-    # ----------------------------------------------
 
     ax = axes[0, 1]
 
@@ -304,10 +255,6 @@ def plot_all(imu_file, odom_file, lidar_file):
     ax.legend(loc="best")
     ax.grid(True)
 
-    # ----------------------------------------------
-    # 3. Linear acceleration (top-right)
-    # ----------------------------------------------
-
     ax = axes[1, 0]
 
     ax.plot(imu_time, acc_x, label="Acceleration X")
@@ -318,10 +265,6 @@ def plot_all(imu_file, odom_file, lidar_file):
     ax.set_ylabel("Acceleration (m/s²)")
     ax.legend()
     ax.grid(True)
-
-    # ----------------------------------------------
-    # 4. Angular velocity (bottom-left)
-    # ----------------------------------------------
 
     ax = axes[1, 1]
 
@@ -337,10 +280,6 @@ def plot_all(imu_file, odom_file, lidar_file):
     ax.legend()
     ax.grid(True)
 
-    # ----------------------------------------------
-    # 5. Position versus time (bottom-middle)
-    # ----------------------------------------------
-
     ax = axes[2, 0]
 
     ax.plot(odom_time, x, label="X Position")
@@ -351,10 +290,6 @@ def plot_all(imu_file, odom_file, lidar_file):
     ax.set_ylabel("Position (m)")
     ax.legend()
     ax.grid(True)
-
-    # ----------------------------------------------
-    # 6. Heading versus time (bottom-right)
-    # ----------------------------------------------
 
     ax = axes[2, 1]
 
@@ -370,10 +305,6 @@ def plot_all(imu_file, odom_file, lidar_file):
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     plt.show()
 
-
-# --------------------------------------------------
-# Main
-# --------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(
