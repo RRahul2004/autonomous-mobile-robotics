@@ -97,9 +97,6 @@ class motion_executioner(Node):
         #set flag to true
         self.imu_initialized = True
 
-
-        
-        
     def odom_callback(self, odom_msg: Odometry):
         
         # log odom msgs
@@ -179,7 +176,7 @@ class motion_executioner(Node):
         msg=Twist()
         # fill up the twist msg for spiral motion
 
-        # keep angualr velocity constant and then slowly increment linear velocity
+        # keep angular velocity constant and then slowly increment linear velocity
         msg.linear.x = self.spiral_rate
         msg.linear.y = 0.0
         msg.angular.z = self.spiral_angular
