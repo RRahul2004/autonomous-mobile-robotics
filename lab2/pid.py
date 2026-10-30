@@ -59,8 +59,10 @@ class PID_ctrl:
             t1=Time.from_msg(self.history[i][1])
             
             dt=(t1.nanoseconds - t0.nanoseconds) / 1e9
-            
+            if dt == 0:
+                dt = 0.1
             dt_avg+=dt
+
 
             # use constant dt if the messages arrived inconsistent
             # for example dt=0.1 overwriting the calculation          
