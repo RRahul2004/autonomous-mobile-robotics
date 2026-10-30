@@ -74,11 +74,11 @@ class decision_maker(Node):
         vel_msg=Twist()
         
         # TODO Part 3: Check if you reached the goal
-        goal_tolerance=0.05
+        goal_tolerance=0.01
         if type(self.goal) == list:
-            reached_goal=calculate_linear_error(self.localizer.getPose(), self.goal[-1]) < goal_tolerance
+            reached_goal=calculate_linear_error(self.localizer.getPose(), self.goal[-1]) < goal_tolerance and calculate_angular_error(self.localizer.getPose(), self.goal) < goal_tolerance
         else: 
-            reached_goal=calculate_linear_error(self.localizer.getPose(), self.goal) < goal_tolerance
+            reached_goal=calculate_linear_error(self.localizer.getPose(), self.goal) < goal_tolerance and calculate_angular_error(self.localizer.getPose(), self.goal) < goal_tolerance
         
 
         if reached_goal:
@@ -108,12 +108,12 @@ def main(args=None):
     # TODO Part 3: You migh need to change the QoS profile based on whether you're using the real robot or in simulation.
     # Remember to define your QoS profile based on the information available in "ros2 topic info /odom --verbose" as explained in Tutorial 3
     
-    odom_qos=QoSProfile(reliability=1, durability=2, history=1, depth=10)
+    odom_qos=QoSProfile(reliability=2, durability=2, history=1, depth=10)
     
 
     # TODO Part 4: instantiate the decision_maker with the proper parameters for moving the robot
     if args.motion.lower() == "point":
-        DM=decision_maker(Twist, "/cmd_vel", 10, goalPoint=[0.0, 0.0], motion_type=POINT_PLANNER)
+        DM=decision_maker(Twist, "/cmd_vel", 10, goalPoint=[1.0, 1.0], motion_type=POINT_PLANNER)
     elif args.motion.lower() == "trajectory":
         DM=decision_maker(Twist, "/cmd_vel", 10, goalPoint=None, motion_type=TRAJECTORY_PLANNER, trajectory=args.trajectory.lower())
     else:
