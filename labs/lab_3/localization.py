@@ -30,6 +30,8 @@ class localization(Node):
         super().__init__("localizer")
 
         self.loc_logger=Logger( loggerName , loggerHeaders)
+
+        self.odom_logger = Logger("odom.csv", ["x", "y", "th", "stamp"])
         self.pose=None
         
         if type==rawSensors:
@@ -49,9 +51,9 @@ class localization(Node):
         
         x = np.zeros(6)
         
-        Q= 5*np.eye(6)
+        Q= 0.05*np.eye(6)
 
-        R= 0.5* np.eye(4)
+        R= 0.8* np.eye(4)
         
         P= np.eye(6)
         
@@ -83,9 +85,14 @@ class localization(Node):
         # Update the pose estimate to be returned by getPose
         self.pose=np.array([xhat[0], xhat[1], xhat[2],odom_msg.header.stamp])
 
+        x = odom_msg.pose.pose.position.x
+        y = odom_msg.pose.pose.position.y
+        th = odom_msg.pose.pose.orientation.z
+
         # TODO Part 4: log your data
         self.loc_logger.log_values([z[2],z[3],xhat[5], xhat[3]*xhat[4], xhat[4], xhat[3], xhat[0], xhat[1], Time.from_msg(odom_msg.header.stamp).nanoseconds])
-      
+        self.odom_logger.log_values([x, y, th, Time.from_msg(odom_msg.header.stamp).nanoseconds])
+
     def odom_callback(self, pose_msg):
         
         self.pose=[ pose_msg.pose.pose.position.x,
