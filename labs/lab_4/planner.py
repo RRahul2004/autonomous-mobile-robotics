@@ -49,7 +49,24 @@ class planner:
         
         # TODO PART 5 convert the cell pixels into the cartesian coordinates
 
+        # Check that start and goal are inside the map and in free space
+        # (search() uses the transposed cost map, indexed [x_cell, y_cell])
+        costT = self.costMap.T
+        for name, cell in (("start", startPose), ("goal", endPose)):
+            if not (0 <= cell[0] < costT.shape[0] and 0 <= cell[1] < costT.shape[1]):
+                print(f"{name} {cell} is outside the map")
+                return None
+            if costT[cell[0], cell[1]] > 0.8:
+                print(f"{name} {cell} is too close to a wall (cost {costT[cell[0], cell[1]]:.2f})")
+                return None
+
         path = search(self.costMap, startPose, endPose)
+
+        # search() returns None when no path exists
+        if path is None:
+            print("A* could not find a path to the goal")
+            return None
+
         Path = list(map(self.m_utilites.cell_2_position, path))
 
 

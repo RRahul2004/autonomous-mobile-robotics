@@ -87,6 +87,9 @@ class decision_maker(Node):
         self.goal=self.planner.plan([self.localizer.getPose()[0], self.localizer.getPose()[1]],
                                      [msg.pose.position.x, msg.pose.position.y])
 
+        if self.goal is None:
+            print("no path found, choose another goal with 2D Goal Pose")
+
     
     def timerCallback(self):
         
