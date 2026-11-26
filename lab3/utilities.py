@@ -1,6 +1,8 @@
-from math import atan2, asin, sqrt, sin, cos
+from math import atan2, asin, sqrt
 
 M_PI=3.1415926535
+
+import numpy as np
 
 class Logger:
     
@@ -24,9 +26,7 @@ class Logger:
     def log_values(self, values_list):
 
         with open(self.filename, 'a') as file:
-            
             vals_str=""
-            
             for value in values_list:
                 vals_str+=f"{value}, "
             
@@ -51,7 +51,7 @@ class FileReader:
         table=[]
         headers=[]
         with open(self.filename, 'r') as file:
-
+            # Skip the header line
             if not read_headers:
                 for line in file:
                     values=line.strip().split(',')
@@ -82,41 +82,45 @@ class FileReader:
         return headers, table
     
     
-
-# TODO Part 3: Implement the conversion from Quaternion to Euler Angles
+# Conversion from Quaternion to Euler Angles
 def euler_from_quaternion(quat):
     """
     Convert quaternion (w in last place) to euler roll, pitch, yaw.
     quat = [x, y, z, w]
     """
-    x = quat[0]
-    y = quat[1]
-    z = quat[2]
-    w = quat[3]
-    yaw = atan2(2 * (w * z + x * y), 1 - (2 * (pow(y, 2) + pow(z, 2))))
-    # just unpack yaw
+    x = quat.x
+    y = quat.y
+    z = quat.z
+    w = quat.w
+    sinr_cosp = 2 * (w * x + y * z)
+    cosr_cosp = 1 - 2 * (x * x + y * y)
+    roll = atan2(sinr_cosp, cosr_cosp)
+    sinp = 2 * (w * y - z * x)
+    pitch = asin(sinp)
+    siny_cosp = 2 * (w * z + x * y)
+    cosy_cosp = 1 - 2 * (y * y + z * z)
+    yaw = atan2(siny_cosp, cosy_cosp)
+    # just unpack yaw for tb
     return yaw
 
 
-#TODO Part 4: Implement the calculation of the linear error
+# Calculation of the linear error
 def calculate_linear_error(current_pose, goal_pose):
         
-    # Compute the linear error in x and y
-    # Remember that current_pose = [x,y, theta, time stamp] and goal_pose = [x,y]
-    # Remember to use the Euclidean distance to calculate the error.
-    error_linear = sqrt(pow((goal_pose[0] - current_pose[0]), 2) + pow((goal_pose[1] - current_pose[1]), 2))
+    return sqrt( (current_pose[0] - goal_pose[0])**2 +
+                (current_pose[1] - goal_pose[1])**2 )
 
-    return error_linear
-
-#TODO Part 4: Implement the calculation of the angular error
+# Calculation of the angular error
 def calculate_angular_error(current_pose, goal_pose):
 
-    # Compute the linear error in x and y
-    # Remember that current_pose = [x,y, theta, time stamp] and goal_pose = [x,y]
-    # Use atan2 to find the desired orientation
-    # Remember that this function returns the difference in orientation between where the robot currently faces and where it should face to reach the goal
-    goal_orientation = atan2(goal_pose[1] - current_pose[1], goal_pose[0] - current_pose[0])
-    error_angular = atan2(sin(goal_orientation - current_pose[2]), cos(goal_orientation - current_pose[2]))
-    # Remember to handle the cases where the angular error might exceed the range [-π, π]
-    # (the atan2(sin, cos) above already wraps it into [-π, π])
-    return error_angular 
+    error_angular= atan2(goal_pose[1]-current_pose[1],
+                        goal_pose[0]-current_pose[0]) - current_pose[2]
+    
+    if error_angular <= -M_PI:
+        error_angular += 2*M_PI
+    
+    
+    elif error_angular >= M_PI:
+        error_angular -= 2*M_PI
+    
+    return error_angular
