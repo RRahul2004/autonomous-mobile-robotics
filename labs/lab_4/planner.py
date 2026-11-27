@@ -5,7 +5,7 @@ from a_star import *
 POINT_PLANNER=0; TRAJECTORY_PLANNER=1
 
 class planner:
-    def __init__(self, type_, mapName="room"):
+    def __init__(self, type_, mapName="maze_1"):
 
         self.type=type_
         self.mapName=mapName
@@ -31,7 +31,7 @@ class planner:
         # TODO PART 5 Create the cost-map, the laser_sig is 
         # the standard deviation for the gausiian for which
         # the mean is located on the occupant grid. 
-        self.m_utilites=mapManipulator(laser_sig= 0.4)
+        self.m_utilites=mapManipulator(laser_sig= 0.36)
             
         self.costMap=self.m_utilites.make_likelihood_field()
         

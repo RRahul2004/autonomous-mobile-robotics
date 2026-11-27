@@ -175,8 +175,8 @@ def search(maze, start, end):
             if (node_position[0] < 0 or node_position[0]>= no_rows or node_position[1]<0 or node_position[1]>=no_columns):
                 continue
 
-            # Make sure walkable terrain
-            if maze[node_position[0], node_position[1]] > 0.8:
+        # Make sure walkable terrain
+            if maze[node_position[0], node_position[1]] > 0.75:
                 continue
 
             # Create new node

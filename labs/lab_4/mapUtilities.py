@@ -16,7 +16,7 @@ from utilities import *
 class mapManipulator(Node):
 
 
-    def __init__(self, filename_: str = "room.yaml", laser_sig=0.01):
+    def __init__(self, filename_: str = "maze_1.yaml", laser_sig=0.01):
         
         
         super().__init__('likelihood_field')
@@ -278,7 +278,7 @@ if __name__=="__main__":
     rclpy.init()
 
     parser=argparse.ArgumentParser()
-    parser.add_argument('--map', type=str, default="./your_map/room.yaml", help='the absolute path to argument')
+    parser.add_argument('--map', type=str, default="./your_map/maze_2.yaml", help='the absolute path to argument')
     parser.add_argument('--std', type=float, help='the std', default=0.01)
 
 
