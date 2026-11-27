@@ -3,7 +3,8 @@
 import sys
 
 
-from utilities import euler_from_quaternion, calculate_angular_error, calculate_linear_error
+from utilities import euler_from_quaternion, calculate_angular_error, calculate_linear_error, Logger
+from rclpy.time import Time
 from pid import PID_ctrl
 
 from rclpy import init, spin, spin_once
@@ -39,6 +40,14 @@ class decision_maker(Node):
         self.create_subscription(PoseStamped, "/goal_pose", self.designPathFor, 10)
         
         self.pathPublisher = self.create_publisher(Path, '/designedPath', 10)
+
+        # Trail of where the robot has actually been (EKF pose), shown live in rviz
+        self.executedPathPublisher = self.create_publisher(Path, '/executedPath', 10)
+        self.executedPath = []
+
+        # Each goal gets its own pair of CSVs: path_<n>_planned.csv / path_<n>_executed.csv
+        self.goalCount = 0
+        self.executedLogger = None
         
         publishing_period=1/rate
 
@@ -89,6 +98,43 @@ class decision_maker(Node):
 
         if self.goal is None:
             print("no path found, choose another goal with 2D Goal Pose")
+            return
+
+        self.startLogging()
+
+    def startLogging(self):
+
+        self.goalCount += 1
+        prefix = f"path_{self.goalCount}"
+
+        # The A* output (or the single goal point for the point planner)
+        path = self.goal if hasattr(self.goal[0], "__len__") else [self.goal]
+        plannedLogger = Logger(f"{prefix}_planned.csv", ["x", "y"])
+        for point in path:
+            plannedLogger.log_values([point[0], point[1]])
+
+        self.executedLogger = Logger(f"{prefix}_executed.csv",
+                                     ["kf_x", "kf_y", "kf_th", "odom_x", "odom_y", "odom_th", "stamp"])
+
+        # Start a fresh trail for this goal
+        self.executedPath = []
+
+        print(f"planned path saved to {prefix}_planned.csv, executed path logging to {prefix}_executed.csv")
+
+    def logExecutedPose(self):
+
+        pose = self.localizer.getPose()
+        odomPose = self.localizer.getOdomPose()
+
+        self.executedPath.append([pose[0], pose[1]])
+        self.publishPathOnRviz2(self.executedPath, self.executedPathPublisher)
+
+        if self.executedLogger is None or odomPose is None:
+            return
+
+        self.executedLogger.log_values([pose[0], pose[1], pose[2],
+                                        odomPose[0], odomPose[1], odomPose[2],
+                                        Time.from_msg(pose[3]).nanoseconds])
 
     
     def timerCallback(self):
@@ -113,6 +159,8 @@ class decision_maker(Node):
 
 
 
+        self.logExecutedPose()
+
         if reached_goal:
             print("reached goal")
             self.publisher.publish(vel_msg)
@@ -123,6 +171,7 @@ class decision_maker(Node):
 
             
             self.goal = None
+            self.executedLogger = None
             print("waiting for the new position input, use 2D nav goal on map")
 
             return
@@ -139,7 +188,10 @@ class decision_maker(Node):
 
 
 
-    def publishPathOnRviz2(self, path):
+    def publishPathOnRviz2(self, path, publisher=None):
+
+        if publisher is None:
+            publisher = self.pathPublisher
 
         Path_ =  Path()
 
@@ -161,7 +213,7 @@ class decision_maker(Node):
 
             Path_.poses.append(pose)
 
-        self.pathPublisher.publish(Path_)
+        publisher.publish(Path_)
 
 import argparse
 def main(args=None):

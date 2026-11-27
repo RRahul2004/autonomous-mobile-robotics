@@ -35,7 +35,10 @@ class localization(Node):
         
         
         self.loc_logger=Logger( loggerName , loggerHeaders)
+        # raw odometry, logged next to the EKF output (same format as lab 3)
+        self.odom_logger=Logger("odom.csv", ["x", "y", "th", "stamp"])
         self.pose=None
+        self.odom_pose=None
         
         if type==rawSensors:
             self.initRawSensors();
@@ -104,6 +107,21 @@ class localization(Node):
                             xhat[1],
                             normalize_angle(xhat[2]),
                             odom_msg.header.stamp])
+
+        self.odom_pose=[odom_msg.pose.pose.position.x,
+                        odom_msg.pose.pose.position.y,
+                        euler_from_quaternion(odom_msg.pose.pose.orientation)]
+
+        stamp=Time.from_msg(odom_msg.header.stamp).nanoseconds
+
+        # Log sensor vs EKF output (same columns as lab 3):
+        # imu_ax, imu_ay, kf_ax, kf_ay, kf_vx, kf_w, kf_x, kf_y, stamp
+        self.loc_logger.log_values([z[2], z[3],
+                                    xhat[5], xhat[3]*xhat[4],
+                                    xhat[4], xhat[3],
+                                    xhat[0], xhat[1],
+                                    stamp])
+        self.odom_logger.log_values(self.odom_pose + [stamp])
         
     def odom_callback(self, pose_msg):
         
@@ -111,12 +129,16 @@ class localization(Node):
                     pose_msg.pose.pose.position.y,
                     euler_from_quaternion(pose_msg.pose.pose.orientation),
                     pose_msg.header.stamp]
+        self.odom_pose=self.pose[:3]
         
         #self.loc_logger.log_values([self.pose[0], self.pose[1], self.pose[2], Time.from_msg(self.pose[3]).nanoseconds])
 
         
     def getPose(self):
         return self.pose
+
+    def getOdomPose(self):
+        return self.odom_pose
 
 
 if __name__=="__main__":
